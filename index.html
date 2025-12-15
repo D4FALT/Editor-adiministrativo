@@ -83,8 +83,8 @@
         .tab-content.active { display: block; }
         
         /* --- Estilos de Listas e Tabelas --- */
-        .cnae-list, .lista-telefonica {
-            max-height: 450px; /* Aumentei um pouco para a lista telefônica */
+        .cnae-list, .lista-telefonica, .checklist-list-container { /* Adicionado: .checklist-list-container */
+            max-height: 450px; 
             overflow-y: auto;
             border: 1px solid #1c2a38;
             padding: 5px;
@@ -139,8 +139,18 @@
             min-width: 300px;
         }
 
-        #draggable-checklist { top: 80px; right: 20px; width: 450px; }
         #draggable-notes { top: 80px; left: 20px; width: 350px; height: 500px; }
+        #draggable-checklist { top: 80px; right: 20px; width: 450px; }
+        
+        /* Nova Janela de Visualização Centralizada */
+        #draggable-view-checklist { 
+            top: 50px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 450px; 
+            height: auto; 
+            max-height: 90vh; 
+        }
 
         .window-header {
             padding: 3px 5px;
@@ -156,6 +166,9 @@
         }
         
         #notes-header { background-color: #9a0000; } /* Cor para notas */
+
+        /* Cor de cabeçalho para a visualização do checklist */
+        #view-checklist-header { background-color: #007a51; } 
 
         .close-btn {
             background-color: #ff4d4d; /* Botão Fechar em vermelho */
@@ -200,6 +213,11 @@
             padding: 3px;
             background-color: #2b3e50;
             color: #f0f0f0;
+        }
+        .checklist-form input[readonly],
+        .checklist-form textarea[readonly] {
+            background-color: #1c2a38; /* Fundo mais escuro para campos somente leitura */
+            color: #88c9ff;
         }
         
         /* Bloco de Notas XP */
@@ -269,8 +287,7 @@
             <button class="tab-button active" onclick="openTab(event, 'acesso-rapido')">Acesso Rápido</button>
             <button class="tab-button" onclick="openTab(event, 'lista-telefonica')">📞 Lista Telefônica</button>
             <button class="tab-button" onclick="openTab(event, 'cnaes')">Lista de CNAEs</button>
-            <button class="tab-button" onclick="openTab(event, 'saved-checklists')">💾 Checklists Salvos</button> <button class="tab-button toggle-button" onclick="toggleWindow('draggable-notes')">📝 Notas</button>
-            <button class="tab-button toggle-button" onclick="toggleWindow('draggable-checklist')">📋 Checklist</button>
+            <button class="tab-button" onclick="openTab(event, 'saved-checklists')">🗃️ Checklists Salvos</button> <button class="tab-button toggle-button" onclick="toggleWindow('draggable-checklist')">📋 Checklist</button>
         </div>
 
         <div id="acesso-rapido" class="tab-content active">
@@ -597,6 +614,8 @@
             <tr><td>9609-2/05</td><td>06.03</td><td>3%</td></tr>
             <tr><td>8591-1/00</td><td>06.04</td><td>3%</td></tr>
             <tr><td>8592-9/01</td><td>06.04</td><td>3%</td></tr>
+            <tr><td>8592-9/02</td><td>06.04</td><td>3%</td></tr>
+            <tr><td>8592-9/03</td><td>06.04</td><td>3%</td></tr>
             <tr><td>9313-1/00</td><td>06.04</td><td>3%</td></tr>
             <tr><td>2391-5/01</td><td>07.01</td><td>5%</td></tr>
             <tr><td>7111-1/00</td><td>07.01</td><td>5%</td></tr>
@@ -803,56 +822,94 @@
         </tbody>
     </table>
 </div>
-        
+        </div>
+
         <div id="saved-checklists" class="tab-content">
-            <h3>🗃️ Checklists Salvos (Armazenamento Local)</h3>
-            <div id="checklist-list-container">
-                <p style="font-style: italic; color: #9aa9bd;">Nenhum checklist salvo. Crie um no popup "📋 Checklist" e clique em Salvar para vê-lo aqui.</p>
+            <h3>🗃️ Checklists de Atendimento Salvos</h3>
+            <div id="checklist-list-container" class="checklist-list-container">
+                <p style="font-style: italic; color: #9aa9bd;">Carregando checklists...</p>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.9em; color: #a0a0a0;">* Os checklists são salvos localmente no seu navegador e não são compartilhados.</p>
+        </div>
+        <div id="draggable-notes" class="draggable-window" style="display: none;">
+            <div class="window-header" id="notes-header">
+                Notas Rápidas
+                <button class="close-btn" onclick="toggleWindow('draggable-notes')">r</button>
+            </div>
+            <div class="window-content">
+                <textarea id="notepad" placeholder="Suas anotações rápidas..." oninput="saveNotesToLocalStorage()"></textarea>
             </div>
         </div>
 
-    </div>
+        <div id="draggable-checklist" class="draggable-window" style="display: none;">
+            <div class="window-header">
+                Criar Novo Checklist
+                <button class="close-btn" onclick="toggleWindow('draggable-checklist')">r</button>
+            </div>
+            <div class="window-content checklist-form">
+                <form id="checklist-form">
+                    <table>
+                        <tr>
+                            <td class="label-col" style="width: 30%;">Nome:</td>
+                            <td><input type="text" id="checklist-cliente" required></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Data:</td>
+                            <td><input type="text" id="checklist-data" value="" disabled></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Telefone:</td>
+                            <td><input type="text" id="checklist-telefone" required></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">CNPJ/CPF:</td>
+                            <td><input type="text" id="checklist-CNPJ_CPF" required></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col" style="vertical-align: top;">Observações:</td>
+                            <td><textarea id="checklist-obs" rows="4"></textarea></td>
+                        </tr>
+                    </table>
+                    <button type="button" class="btn-save" onclick="saveChecklist()">💾 Salvar Checklist</button>
+                    <button type="button" class="btn-save" onclick="clearChecklistForm()" style="background-color: #f0ad4e;">🔄 Limpar Campos</button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="draggable-view-checklist" class="draggable-window" style="display: none;">
+            <div class="window-header" id="view-checklist-header">
+                Visualizar Checklist Salvo
+                <button class="close-btn" onclick="toggleWindow('draggable-view-checklist')" style="background-color: #5a7391;">r</button>
+            </div>
+            <div class="window-content checklist-form">
+                <form id="view-checklist-form">
+                    <table>
+                        <tr>
+                            <td class="label-col" style="width: 30%;">Nome:</td>
+                            <td><input type="text" id="view-checklist-cliente" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Data:</td>
+                            <td><input type="text" id="view-checklist-data" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Telefone:</td>
+                            <td><input type="text" id="view-checklist-telefone" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">CNPJ/CPF:</td>
+                            <td><input type="text" id="view-checklist-CNPJ_CPF" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="label-col" style="vertical-align: top;">Observações:</td>
+                            <td><textarea id="view-checklist-obs" rows="8" readonly></textarea></td>
+                        </tr>
+                    </table>
+                    <button type="button" class="btn-save" onclick="toggleWindow('draggable-view-checklist')" style="background-color: #5a7391;">↩ Fechar Visualização</button>
+                </form>
+            </div>
+        </div>
 
-    <div id="draggable-notes" class="draggable-window" style="display: none;">
-        <div class="window-header" id="notes-header">
-            Notas Rápidas
-            <button class="close-btn" onclick="toggleWindow('draggable-notes')">r</button>
-        </div>
-        <div class="window-content">
-            <textarea id="notepad" placeholder="Suas anotações rápidas..." oninput="saveNotesToLocalStorage()"></textarea>
-        </div>
-    </div>
-
-    <div id="draggable-checklist" class="draggable-window" style="display: none;">
-        <div class="window-header">
-            Checklist de Atividades
-            <button class="close-btn" onclick="toggleWindow('draggable-checklist')">r</button>
-        </div>
-        <div class="window-content checklist-form">
-            <form id="checklist-form">
-                <table>
-                    <tr>
-                        <td class="label-col" style="width: 30%;">Nome:</td>
-                        <td><input type="text" id="checklist-cliente" required></td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">Data:</td>
-                        <td><input type="text" id="checklist-data" value="" disabled></td>
-                    </tr>
-                    <tr>
-                        <td class="label-col">CNPJ/CPF:</td>
-                        <td><input type="text" id="checklist-CNPJ/CPF" required></td>
-                    </tr>
-                    <tr>
-                        <td class="label-col" style="vertical-align: top;">Observações:</td>
-                        <td><textarea id="checklist-obs" rows="4"></textarea></td>
-                    </tr>
-                </table>
-                <button type="button" class="btn-save" onclick="saveChecklist()">💾 Salvar Checklist</button>
-                <button type="button" class="btn-save" onclick="clearChecklistForm()" style="background-color: #f0ad4e;">🔄 Limpar Campos</button>
-            </form>
-        </div>
-    </div>
 
     <script>
         // --- Funções de Abas (Tabs) ---
@@ -864,10 +921,16 @@
             }
             tablinks = document.getElementsByClassName("tab-button");
             for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
+                // Certifica-se de que o botão da janela flutuante não perca o estilo toggle-button
+                if (!tablinks[i].classList.contains('toggle-button')) {
+                    tablinks[i].classList.remove("active");
+                }
             }
             document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
+            // Adiciona a classe 'active' apenas se não for o botão de toggle de janela
+            if (!evt.currentTarget.classList.contains('toggle-button')) {
+                evt.currentTarget.classList.add("active");
+            }
             
             // Recarrega a lista de checklists salvos ao abrir a aba
             if (tabName === 'saved-checklists') {
@@ -911,6 +974,9 @@
             tr = table.getElementsByTagName("tr");
 
             for (i = 0; i < tr.length; i++) {
+                // Ignorar linhas de cabeçalho de seção (que tem a cor de fundo diferente)
+                if (tr[i].style.backgroundColor === 'rgb(59, 80, 107)') continue; 
+
                 var visible = false;
                 // Varre todas as células da linha
                 var tds = tr[i].getElementsByTagName("td");
@@ -930,6 +996,13 @@
         function toggleWindow(windowId) {
             const win = document.getElementById(windowId);
             win.style.display = win.style.display === "flex" ? "none" : "flex";
+            
+            // Coloca a janela ativa na frente (z-index)
+            if (win.style.display === "flex") {
+                const allWindows = document.querySelectorAll('.draggable-window');
+                allWindows.forEach(w => w.style.zIndex = 1000);
+                win.style.zIndex = 1001;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -940,8 +1013,8 @@
             loadNotesFromLocalStorage();
             document.getElementById('checklist-data').value = new Date().toLocaleDateString('pt-BR');
             
-            // Inicialmente, carregue a lista de checklists se a aba estiver ativa
-            loadSavedChecklists();
+            // Se a aba 'saved-checklists' for a aba inicial (o que não é o caso aqui, mas é boa prática), chamar:
+            // loadSavedChecklists();
         });
 
         function makeDraggable(element) {
@@ -960,6 +1033,11 @@
                 document.onmouseup = closeDragElement;
                 // Chama a função a cada movimento do cursor
                 document.onmousemove = elementDrag;
+                
+                // Traz a janela para frente ao iniciar o arrasto
+                const allWindows = document.querySelectorAll('.draggable-window');
+                allWindows.forEach(w => w.style.zIndex = 1000);
+                element.style.zIndex = 1001;
             }
 
             function elementDrag(e) {
@@ -999,10 +1077,12 @@
         function saveChecklist() {
             const cliente = document.getElementById('checklist-cliente').value;
             const data = document.getElementById('checklist-data').value;
-            const CNPJ = document.getElementById('checklist-CNPJ/CPF').value;
+            const telefone = document.getElementById('checklist-telefone').value; // ID Correto para Telefone
+            const cnpjCpf = document.getElementById('checklist-CNPJ_CPF').value; // ID Correto para CNPJ/CPF
             const obs = document.getElementById('checklist-obs').value;
 
-            if (!cliente || !CNPJ) {
+            // Validação agora usa o campo correto de CNPJ/CPF
+            if (!cliente || !cnpjCpf) {
                 alert("O nome do contribuinte e CNPJ são obrigatórios.");
                 return;
             }
@@ -1011,7 +1091,8 @@
                 id: Date.now(),
                 cliente: cliente,
                 data: data,
-                CNPJ: CNPJ,
+                telefone: telefone, // Salvando Telefone
+                CNPJ: cnpjCpf,      // Salvando CNPJ/CPF
                 obs: obs
             };
 
@@ -1019,7 +1100,7 @@
             checklists.push(newChecklist);
             localStorage.setItem('saved_checklists', JSON.stringify(checklists));
 
-            alert("Checklist salvo com sucesso!");
+            alert("Checklist salvo com sucesso! Você pode visualizá-lo na aba 'Checklists Salvos'.");
             clearChecklistForm();
             loadSavedChecklists(); // Atualiza a lista na aba se estiver aberta
         }
@@ -1027,6 +1108,10 @@
         function loadSavedChecklists() {
             const checklists = JSON.parse(localStorage.getItem('saved_checklists')) || [];
             const container = document.getElementById('checklist-list-container');
+            
+            // Verifica se o container existe antes de tentar manipulá-lo (evita erro se a aba não for carregada)
+            if (!container) return; 
+            
             container.innerHTML = ''; // Limpa o conteúdo anterior
 
             if (checklists.length === 0) {
@@ -1034,13 +1119,17 @@
                 return;
             }
 
+            // Ordena os checklists pelo ID (mais recente primeiro)
+            checklists.sort((a, b) => b.id - a.id);
+
             checklists.forEach(checklist => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'saved-checklist-item';
                 itemDiv.innerHTML = `
                     <div>
                         <strong>Contribuinte:</strong> ${checklist.cliente}<br>
-                        <strong>CNPJ:</strong> ${checklist.CNPJ}<br>
+                        <strong>CNPJ/CPF:</strong> ${checklist.CNPJ}<br>
+                        <strong>Telefone:</strong> ${checklist.telefone || 'N/A'}<br>
                         <span style="font-size: 0.9em; color: #9aa9bd;">(${checklist.data})</span>
                     </div>
                     <div>
@@ -1052,18 +1141,21 @@
             });
         }
         
+        // FUNÇÃO ATUALIZADA PARA USAR O NOVO DIÁLOGO FLUTUANTE
         function viewChecklist(id) {
             const checklists = JSON.parse(localStorage.getItem('saved_checklists')) || [];
             const checklist = checklists.find(c => c.id === id);
 
             if (checklist) {
-                alert(
-                    `--- Checklist Salvo ---\n` +
-                    `Cliente: ${checklist.cliente}\n` +
-                    `Data: ${checklist.data}\n` +
-                    `CNPJ: ${checklist.CNPJ}\n` +
-                    `Observações: ${checklist.obs || '(Nenhuma observação)'}`
-                );
+                // Preenche os campos da nova janela de visualização
+                document.getElementById('view-checklist-cliente').value = checklist.cliente || '';
+                document.getElementById('view-checklist-data').value = checklist.data || '';
+                document.getElementById('view-checklist-telefone').value = checklist.telefone || '';
+                document.getElementById('view-checklist-CNPJ_CPF').value = checklist.CNPJ || '';
+                document.getElementById('view-checklist-obs').value = checklist.obs || '';
+                
+                // Exibe a janela de visualização
+                toggleWindow('draggable-view-checklist');
             } else {
                 alert("Checklist não encontrado.");
             }
@@ -1080,7 +1172,8 @@
 
         function clearChecklistForm() {
             document.getElementById('checklist-cliente').value = '';
-            document.getElementById('checklist-CNPJ/CPF').value = '';
+            document.getElementById('checklist-telefone').value = ''; // Limpa o campo Telefone
+            document.getElementById('checklist-CNPJ_CPF').value = ''; // Limpa o campo CNPJ/CPF
             document.getElementById('checklist-obs').value = '';
             document.getElementById('checklist-data').value = new Date().toLocaleDateString('pt-BR');
         }
